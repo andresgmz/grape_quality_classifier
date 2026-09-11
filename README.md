@@ -29,6 +29,10 @@ tests/             tests
 ## Usage
 
 ```bash
+# entorno aislado (Python 3.9)
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate      # Linux / macOS
 pip install -r requirements.txt
 
 python -m src.prepare_data [ruta_a_Grapes_Dataset]   # descomprime el subset black en data/raw/
@@ -42,6 +46,10 @@ python -m pytest tests/                              # tests del pipeline de dat
 
 `prepare_data` busca el archivo en `~/Downloads/GrapeNet.../Grapes_Dataset` por
 defecto; se le puede pasar otra ruta como argumento.
+
+Las versiones de `requirements.txt` están fijadas a las que produjeron los
+resultados del informe. TensorFlow 2.11 es la última serie que funciona con
+Python 3.9 sin pasar a Keras 3, que no carga el modelo `.keras` guardado aquí.
 
 ## Decisiones de diseño
 

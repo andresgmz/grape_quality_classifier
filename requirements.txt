@@ -1,7 +1,10 @@
-tensorflow
-scikit-learn
-pandas
-numpy
-matplotlib
-pillow
-pytest
+# Versiones fijadas a las que produjeron los resultados de reports/report.md.
+# TensorFlow 2.11 es la ultima serie que soporta Python 3.9 sin pasar a Keras 3,
+# que no puede cargar el modelo .keras guardado aqui.
+tensorflow==2.11.0
+scikit-learn==1.2.2
+pandas==2.0.2
+numpy==1.23.5
+matplotlib==3.6.2
+pillow==9.0.1
+pytest==8.4.2
