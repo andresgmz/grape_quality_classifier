@@ -5,6 +5,8 @@ CNN image classifier that detects fresh vs. rotten grapes.
 Course project for **Advanced Topics in Software Engineering** (Master's, semester 1).
 Fruit chosen by the group: **grape**. Binary task: `0 = rotten`, `1 = fresh`.
 
+Arquitectura y diagramas: [`ARQUITECTURA.md`](ARQUITECTURA.md).
+
 Pipeline completo y entrenado. Resultado en el conjunto de test:
 **0,872 de accuracy por imagen** y **0,915 por foto original**. Detalles, matriz de
 confusión y reflexiones en [`reports/report.md`](reports/report.md).
