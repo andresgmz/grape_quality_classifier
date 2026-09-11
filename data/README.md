@@ -47,12 +47,18 @@ Flash Mode, Date Created`
 
 ## Known caveats
 
-- **The dataset ships pre-augmented.** File names carry suffixes such as
-  `_brightness_contrast_iter1` or `_horizontal_flip_iter1`, meaning several
-  files derive from the same original photo. A random train/test split would
-  leak augmented variants of the same base image across sets and inflate the
-  reported accuracy. Splits must be **grouped by base image** (the
-  `IMG_<date>_<time>_TIMEBURST<n>_<id>` prefix).
+- **No hay ni una sola imagen original.** Los 5.900 archivos son 25 variantes
+  aumentadas (5 transformaciones — `brightness_contrast`, `gamma`,
+  `horizontal_flip`, `rgb_shift`, `rotate` — × 5 iteraciones) de solo **236 fotos
+  distintas**: 116 fresh y 120 rotten. El tamaño real del dataset es 236, no 5.900.
+- **El split debe agruparse por foto original** (`base_id`, el prefijo
+  `IMG_<date>_<time>_TIMEBURST<n>_<id>`). Repartir archivos al azar pondría
+  variantes de la misma foto en train y en test e inflaría la precisión reportada.
+  `src/prepare_data.base_image_id()` calcula ese identificador y hay tests que
+  verifican que ninguna foto cruce de conjunto.
+- **Se usan 4 variantes por foto** (944 imágenes, `config.VARIANTS_PER_PHOTO`), no
+  las 25: se conservan todas las fotos distintas y se recorta la redundancia
+  sintética, que la augmentation propia del entrenamiento ya genera.
 - **Single acquisition setup.** The metadata reports one camera maker/model
   (Xiaomi 2312DRAABI) and daylight as the light source for every image, so the
   model may not generalize to other cameras or lighting conditions. Relevant to
