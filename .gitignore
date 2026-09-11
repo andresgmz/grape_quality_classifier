@@ -12,3 +12,4 @@ models/*.keras
 models/*.h5
 models/*.json
 .ipynb_checkpoints/
+.pytest_cache/
