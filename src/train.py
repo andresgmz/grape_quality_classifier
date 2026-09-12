@@ -19,11 +19,12 @@ def train():
     train_ds, val_ds = preprocessing.build_datasets()
     cnn = model_module.compile_model(model_module.build_model())
 
-    # Early stopping: con un dataset chico el sobreajuste llega rapido y no
-    # tiene sentido gastar las 20 epocas completas si la validacion deja de mejorar.
+    # Early stopping sobre val_loss, no val_accuracy: con 60 imagenes de
+    # validacion la accuracy avanza a saltos de 1,7% y corta el entrenamiento
+    # antes de tiempo. La perdida es una senal mas fina.
     callbacks = [
         tf.keras.callbacks.EarlyStopping(
-            monitor="val_accuracy", patience=5, restore_best_weights=True
+            monitor="val_loss", patience=8, restore_best_weights=True
         )
     ]
 
