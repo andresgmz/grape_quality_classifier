@@ -34,18 +34,21 @@ def predict(image_path: Path) -> dict:
         raise FileNotFoundError(f"No existe la imagen {image_path}")
 
     # Releemos el preprocessing guardado junto al modelo para aplicar en
-    # inferencia exactamente la misma transformacion que en entrenamiento.
-    preprocessing.load_preprocessing()
+    # inferencia exactamente la misma transformacion que en entrenamiento,
+    # incluido el umbral de decision calibrado.
+    threshold = preprocessing.decision_threshold()
 
     model = load_model()
     image = preprocessing.load_image(image_path)
     probability = float(model.predict(np.expand_dims(image, 0), verbose=0)[0][0])
 
-    label = int(probability >= 0.5)
+    label = int(probability >= threshold)
     return {
         "image": image_path.name,
         "label": label,
         "class_name": config.CLASS_NAMES[label],
+        "p_fresh": probability,
+        "threshold": threshold,
         "confidence": probability if label == 1 else 1 - probability,
     }
 
@@ -58,8 +61,8 @@ def main(argv: list[str]) -> int:
     for raw_path in argv[1:]:
         result = predict(Path(raw_path))
         print(
-            f"{result['image']:<55} -> {result['class_name']:<6} "
-            f"(label={result['label']}, confianza={result['confidence']:.3f})"
+            f"{result['image']:<45} -> {result['class_name']:<6} "
+            f"(p_fresh={result['p_fresh']:.3f} vs umbral {result['threshold']:.2f})"
         )
     return 0
 

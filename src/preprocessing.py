@@ -80,14 +80,17 @@ def build_datasets():
     return train_ds, val_ds
 
 
-def save_preprocessing(path: Path = config.PREPROCESSING_PATH) -> Path:
-    """Serialize img_size, normalization and classes to JSON."""
+def save_preprocessing(
+    path: Path = config.PREPROCESSING_PATH, decision_threshold: float = 0.5
+) -> Path:
+    """Serialize img_size, normalization, classes and decision threshold."""
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "img_size": list(config.IMG_SIZE),
         "normalization": NORMALIZATION,
         "classes": config.CLASSES,
         "variants_per_photo": config.VARIANTS_PER_PHOTO,
+        "decision_threshold": float(decision_threshold),
     }
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return path
@@ -98,3 +101,13 @@ def load_preprocessing(path: Path = config.PREPROCESSING_PATH) -> dict:
     if not path.exists():
         raise FileNotFoundError(f"Falta {path}. Corre antes: python -m src.train")
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def decision_threshold(path: Path = config.PREPROCESSING_PATH) -> float:
+    """Umbral por encima del cual se declara 'fresh'.
+
+    Se calibra en validacion al entrenar. Es mayor que 0.5 a proposito: dejar
+    pasar una uva podrida como fresca es mas grave que descartar una sana, asi
+    que se exige mas evidencia para decir 'fresh'.
+    """
+    return float(load_preprocessing(path).get("decision_threshold", 0.5))

@@ -31,8 +31,9 @@ def predict_split(model: tf.keras.Model, split: str = "test"):
     part = frame[frame["split"] == split].reset_index(drop=True)
     ds = preprocessing.build_dataset(split, frame)
 
+    threshold = preprocessing.decision_threshold()
     probabilities = model.predict(ds, verbose=0).ravel()
-    return part["label"].to_numpy(), (probabilities >= 0.5).astype(int), part
+    return part["label"].to_numpy(), (probabilities >= threshold).astype(int), part
 
 
 def evaluate(model: tf.keras.Model, split: str = "test") -> dict:
@@ -42,20 +43,26 @@ def evaluate(model: tf.keras.Model, split: str = "test") -> dict:
         y_true, y_pred, average="binary", zero_division=0
     )
 
-    # Precision por foto original: cada foto aporta varias variantes, asi que
-    # votamos entre ellas. Da una lectura mas honesta del tamaño real del test.
+    # Fraccion de podridas efectivamente detectadas: es la metrica que importa
+    # cuando dejar pasar fruta en mal estado es el error caro.
+    rotten_recall = float(((y_true == 0) & (y_pred == 0)).sum() / max((y_true == 0).sum(), 1))
+
+    # Precision por foto original: cuando el dataset trae variantes de una misma
+    # foto, votamos entre ellas. Con un archivo por foto coincide con la normal.
     per_photo = part.assign(pred=y_pred).groupby("base_id").agg(
         label=("label", "first"), vote=("pred", lambda s: int(s.mean() >= 0.5))
     )
 
     return {
         "split": split,
+        "decision_threshold": preprocessing.decision_threshold(),
         "n_images": int(len(y_true)),
         "n_photos": int(part["base_id"].nunique()),
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "precision": float(precision),
         "recall": float(recall),
         "f1": float(f1),
+        "rotten_recall": rotten_recall,
         "accuracy_per_photo": float(accuracy_score(per_photo["label"], per_photo["vote"])),
     }
 
@@ -72,7 +79,7 @@ def confusion_matrix(model: tf.keras.Model, split: str = "test") -> np.ndarray:
     ax.set_yticks([0, 1], labels=names)
     ax.set_xlabel("prediccion")
     ax.set_ylabel("real")
-    ax.set_title(f"Matriz de confusion ({split})")
+    ax.set_title(f"Matriz de confusion ({split}, umbral {preprocessing.decision_threshold():.2f})")
     for i in range(2):
         for j in range(2):
             ax.text(j, i, matrix[i, j], ha="center", va="center", color="black")
@@ -128,6 +135,7 @@ def main() -> None:
         print(
             f"[{split}] accuracy={values['accuracy']:.3f} precision={values['precision']:.3f} "
             f"recall={values['recall']:.3f} f1={values['f1']:.3f} "
+            f"| podridas detectadas={values['rotten_recall']:.3f} "
             f"(por foto: {values['accuracy_per_photo']:.3f}, "
             f"{values['n_images']} imgs / {values['n_photos']} fotos)"
         )

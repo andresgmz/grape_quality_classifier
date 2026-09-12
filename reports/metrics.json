@@ -1,22 +1,26 @@
 {
   "val": {
     "split": "val",
+    "decision_threshold": 0.62,
     "n_images": 60,
     "n_photos": 60,
     "accuracy": 0.9666666666666667,
-    "precision": 0.9666666666666667,
-    "recall": 0.9666666666666667,
-    "f1": 0.9666666666666667,
+    "precision": 1.0,
+    "recall": 0.9333333333333333,
+    "f1": 0.9655172413793104,
+    "rotten_recall": 1.0,
     "accuracy_per_photo": 0.9666666666666667
   },
   "test": {
     "split": "test",
+    "decision_threshold": 0.62,
     "n_images": 60,
     "n_photos": 60,
     "accuracy": 0.9833333333333333,
-    "precision": 0.967741935483871,
-    "recall": 1.0,
-    "f1": 0.9836065573770492,
+    "precision": 1.0,
+    "recall": 0.9666666666666667,
+    "f1": 0.983050847457627,
+    "rotten_recall": 1.0,
     "accuracy_per_photo": 0.9833333333333333
   }
 }
