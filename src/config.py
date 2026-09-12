@@ -9,6 +9,11 @@ DATA_DIR = ROOT_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 EXTERNAL_TEST_DIR = DATA_DIR / "external_test"
+# Carpeta con las imagenes a usar: debe tener una subcarpeta por clase
+# (fresh/ y rotten/). Cambiar esto es todo lo que hace falta para entrenar
+# con otro dataset.
+DATASET_DIR = ROOT_DIR / "grape"
+
 MODELS_DIR = ROOT_DIR / "models"
 REPORTS_DIR = ROOT_DIR / "reports"
 
@@ -27,10 +32,13 @@ BATCH_SIZE = 16
 # solo restaura los mejores pesos si el entrenamiento se corta antes del final.
 EPOCHS = 60
 SEED = 42
-# Con solo 236 fotos originales, un test del 10% son 24 fotos: demasiado
-# pocas para que la metrica signifique algo. 20% da ~47 fotos.
-VAL_SPLIT = 0.2
-TEST_SPLIT = 0.2
+# Reparto 70 / 15 / 15.
+VAL_SPLIT = 0.15
+TEST_SPLIT = 0.15
+
+# "transfer" = MobileNetV2 preentrenada en ImageNet (recomendado con pocos
+# datos); "cnn" = la red propia entrenada desde cero.
+MODEL_KIND = "transfer"
 
 MODEL_PATH = MODELS_DIR / "grape_quality_classifier.keras"
 PREPROCESSING_PATH = MODELS_DIR / "preprocessing.json"

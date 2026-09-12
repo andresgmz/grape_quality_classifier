@@ -62,7 +62,7 @@ def build_dataset(split: str, frame=None, shuffle: bool = False) -> tf.data.Data
     if part.empty:
         raise ValueError(f"El split '{split}' esta vacio en labels.csv")
 
-    paths = [str(config.RAW_DIR / image) for image in part["image"]]
+    paths = [str(config.DATASET_DIR / image) for image in part["image"]]
     labels = part["label"].to_numpy()
 
     ds = tf.data.Dataset.from_tensor_slices((paths, labels))

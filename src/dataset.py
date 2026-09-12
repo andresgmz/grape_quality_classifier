@@ -25,7 +25,7 @@ from .prepare_data import base_image_id
 IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png")
 
 
-def list_images(root: Path = config.RAW_DIR) -> list[tuple[Path, int]]:
+def list_images(root: Path = config.DATASET_DIR) -> list[tuple[Path, int]]:
     """Walk raw/<class>/ and return (path, label) pairs."""
     pairs: list[tuple[Path, int]] = []
     for class_name, label in config.CLASSES.items():
@@ -87,12 +87,13 @@ def build_labels_csv(output: Path = config.LABELS_CSV) -> Path:
     pairs = list_images()
     if not pairs:
         raise FileNotFoundError(
-            f"No hay imagenes en {config.RAW_DIR}. Corre antes: python -m src.prepare_data"
+            f"No hay imagenes en {config.DATASET_DIR}. Esa carpeta debe tener "
+            f"una subcarpeta por clase: {', '.join(config.CLASSES)}."
         )
 
     frame = pd.DataFrame(
         {
-            "image": [str(p.relative_to(config.RAW_DIR)).replace("\\", "/") for p, _ in pairs],
+            "image": [str(p.relative_to(config.DATASET_DIR)).replace("\\", "/") for p, _ in pairs],
             "label": [label for _, label in pairs],
         }
     )

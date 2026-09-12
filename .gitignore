@@ -13,3 +13,7 @@ models/*.h5
 models/*.json
 .ipynb_checkpoints/
 .pytest_cache/
+
+# dataset de trabajo (imagenes, no se versiona)
+grape/
+data_to_test/
