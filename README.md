@@ -1,30 +1,36 @@
 # Grape Quality Classifier
 
-CNN image classifier that detects fresh vs. rotten grapes.
+Clasificador de imágenes que detecta uvas **frescas vs. podridas**, con transfer
+learning sobre MobileNetV2.
 
-Course project for **Advanced Topics in Software Engineering** (Master's, semester 1).
-Fruit chosen by the group: **grape**. Binary task: `0 = rotten`, `1 = fresh`.
+Proyecto de **Tópicos Avanzados de Ingeniería de Software** (maestría, semestre 1).
+Fruta elegida por el grupo: **uva**. Tarea binaria: `0 = rotten`, `1 = fresh`.
+
+| | Test |
+| --- | ---: |
+| Accuracy | **0,983** |
+| Precision | **1,000** |
+| Podridas detectadas | **1,000** |
+| Podridas que pasan como frescas | **0 de 30** |
 
 Arquitectura y diagramas: [`ARQUITECTURA.md`](ARQUITECTURA.md).
+Informe completo: [`reports/report.md`](reports/report.md).
 
-Pipeline completo y entrenado. Resultado en el conjunto de test:
-**0,872 de accuracy por imagen** y **0,915 por foto original**. Detalles, matriz de
-confusión y reflexiones en [`reports/report.md`](reports/report.md).
-
-## Structure
+## Estructura
 
 ```
+grape/
+  fresh/           imágenes de uva sana, label = 1
+  rotten/          imágenes de uva podrida, label = 0
 data/
-  raw/fresh/       original grape images, label = 1
-  raw/rotten/      original grape images, label = 0
-  processed/       train-ready dataset (splits, labels.csv)
-  external_test/   new images to check generalization
-  metadata/        GrapeNet metadata CSVs (versioned)
-  README.md        dataset source, layout and caveats
-models/            trained model + preprocessing artifacts
-notebooks/         exploration
-reports/           results report
-src/               source code
+  processed/       labels.csv con los splits
+  external_test/   imágenes para probar generalización
+  metadata/        CSVs de GrapeNet (dataset anterior)
+  README.md        datasets, procedencia y caveats
+models/            modelo entrenado + preprocessing.json
+notebooks/         exploración
+reports/           informe, métricas y gráficas
+src/               código
 tests/             tests
 ```
 
@@ -37,38 +43,51 @@ python -m venv .venv
 # source .venv/bin/activate      # Linux / macOS
 pip install -r requirements.txt
 
-python -m src.prepare_data [ruta_a_Grapes_Dataset]   # descomprime el subset black en data/raw/
-python -m src.dataset                                # arma labels.csv y los splits
-python -m src.train                                  # entrena y guarda modelo + preprocessing
-python -m src.evaluate                               # metricas, matriz de confusion y curvas
-python -m src.predict data/external_test/*.jpg       # inferencia sobre imagenes nuevas
+python -m src.dataset                          # arma labels.csv y los splits 70/15/15
+python -m src.train                            # entrena, calibra el umbral y guarda artefactos
+python -m src.evaluate                         # métricas, matriz de confusión y curvas
+python -m src.predict ruta/a/imagen.jpg        # inferencia sobre imágenes nuevas
 
-python -m pytest tests/                              # tests del pipeline de datos
+python -m pytest tests/                        # tests del pipeline de datos
 ```
 
-`prepare_data` busca el archivo en `~/Downloads/GrapeNet.../Grapes_Dataset` por
-defecto; se le puede pasar otra ruta como argumento.
+`python -m src.prepare_data` pertenece al dataset anterior (descomprimía el archivo de
+GrapeNet) y ya no hace falta en el flujo actual.
 
-Las versiones de `requirements.txt` están fijadas a las que produjeron los
-resultados del informe. TensorFlow 2.11 es la última serie que funciona con
-Python 3.9 sin pasar a Keras 3, que no carga el modelo `.keras` guardado aquí.
+Las versiones de `requirements.txt` están fijadas a las que produjeron los resultados
+del informe. TensorFlow 2.11 es la última serie que funciona con Python 3.9 sin pasar
+a Keras 3, que no carga el modelo `.keras` guardado aquí.
 
 ## Decisiones de diseño
 
-- **El dataset trae 5.900 archivos pero solo 236 fotos distintas**: cada foto viene
-  con 25 variantes aumentadas. Usamos 4 variantes por foto (944 imágenes) y
-  generamos el resto de la variación con augmentation propia al entrenar.
-- **El split se hace por foto original, no por archivo.** Repartir archivos al azar
-  pondría variantes de la misma foto en train y test, e inflaría la precisión. Hay
-  un test que lo verifica.
-- El preprocessing se serializa en `models/preprocessing.json` junto al modelo, para
-  que inferencia y entrenamiento apliquen la misma transformación.
+- **Transfer learning sobre MobileNetV2 congelada.** Solo se entrenan 1.281 de
+  2.259.265 parámetros. Con 280 imágenes de entrenamiento, ajustar la red completa
+  sería sobreajustar; las features de ImageNet se reutilizan tal cual.
+- **Umbral de decisión calibrado en 0,62, no 0,5.** Dejar pasar una uva podrida es
+  más grave que descartar una sana, así que se exige más evidencia para decir
+  "fresh". El umbral se barre sobre validación al entrenar y se guarda en
+  `models/preprocessing.json`; si cambiás de dataset, se recalibra solo.
+- **Split 70/15/15 estratificado y agrupado por imagen base.** Acá cada archivo es una
+  imagen distinta, pero la lógica de agrupamiento se conserva porque protege el caso
+  de un dataset con variantes de una misma foto — que es lo que pasaba con GrapeNet.
+- **El preprocessing se serializa junto al modelo**, para que inferencia y
+  entrenamiento apliquen exactamente la misma transformación.
+- **Cambiar de dataset es una línea**: `config.DATASET_DIR` apunta a cualquier carpeta
+  con subcarpetas `fresh/` y `rotten/`.
+
+## Limitación conocida
+
+El modelo funciona en el dominio con el que se entrenó: uvas verdes sobre superficies
+claras y lisas, fotografiadas de cerca. Con racimos de uva negra en viñedo, con hojas
+y fondos complejos, el rendimiento cae — la sección 6 del informe lo documenta con
+números. Cerrar esa brecha requiere datos de ese tipo, no ajustes de modelo.
 
 ## Estado
 
-- [x] Extract the GrapeNet black grape subset (see `data/README.md`)
-- [x] Implement preprocessing and data augmentation
-- [x] Define and train the CNN
-- [x] Evaluate and test with new images
-- [x] Save model and preprocessing artifacts
-- [x] Write the report (`reports/report.md`)
+- [x] Conseguir y validar el dataset
+- [x] Implementar preprocessing y data augmentation
+- [x] Definir y entrenar el modelo
+- [x] Calibrar el umbral según el costo asimétrico del error
+- [x] Evaluar y probar con imágenes nuevas
+- [x] Guardar modelo y artefactos de preprocessing
+- [x] Escribir el informe (`reports/report.md`)

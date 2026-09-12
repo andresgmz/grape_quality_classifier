@@ -1,65 +1,101 @@
 # Data
 
-Images are **not** tracked in this repository. Only the metadata CSVs and this
-document are versioned; everything under `raw/`, `processed/` and
-`external_test/` is ignored by git (see `.gitignore`).
+Las imágenes **no** se versionan. Solo se versionan los CSV de metadatos y este
+documento; todo lo que son imágenes está ignorado por git (ver `.gitignore`).
 
-Reason: the black-grape subset alone weighs ~895 MB compressed, which is far
-above GitHub's 100 MB per-file limit and would bloat the history permanently.
-The dataset is therefore reproduced locally from the original source.
+El proyecto pasó por **dos datasets**. El segundo es el que está en uso.
 
-## Source
+---
+
+## Dataset actual: `grape/`
+
+Carpeta en la raíz del repositorio, con una subcarpeta por clase:
+
+```
+grape/fresh/     200 imágenes, label = 1
+grape/rotten/    200 imágenes, label = 0
+```
+
+Uvas verdes, sueltas o en racimos pequeños, fotografiadas de cerca sobre una
+superficie clara. La señal de podredumbre son manchas marrones, hundimientos y piel
+arrugada.
+
+### Verificaciones hechas antes de entrenar
+
+| Chequeo | Resultado |
+| --- | --- |
+| Duplicados exactos (hash MD5) | **0** en ambas clases |
+| Tamaños de imagen | Variados, de ~650×650 a 1040×780 |
+| Balance de clases | 200 / 200 |
+| Brillo medio `fresh` | 147,7 |
+| Brillo medio `rotten` | 142,8 |
+
+El brillo importa: al ser casi idéntico entre clases, el modelo **no puede** separarlas
+con un atajo de luminosidad y está obligado a mirar la textura. En el dataset anterior
+eso no pasaba, y fue exactamente el problema.
+
+### Cómo usarlo
+
+`config.DATASET_DIR` apunta a esta carpeta. Para entrenar con otro dataset, armá una
+carpeta con subcarpetas `fresh/` y `rotten/`, cambiá esa línea y volvé a correr
+`python -m src.dataset` y `python -m src.train`.
+
+---
+
+## Dataset anterior: GrapeNet (ya no se usa)
 
 **GrapeNet — An Image Dataset for Grape Variety and Quality Classification.**
+Subconjunto *black round*, descomprimido en su momento a `data/raw/fresh` y
+`data/raw/rotten` por `src/prepare_data.py`.
 
-The full dataset covers three varieties (`black`, `flame`, `green`) split into
-`fresh` / `rotten` folders, each one distributed as a ZIP file. This project
-uses **only the black round subset**:
+Se descartó por dos motivos, ambos documentados en la sección 6 del informe.
 
-| Subset                              | Size    | Label |
-| ----------------------------------- | ------- | ----- |
-| `Grapes_Dataset/black/round_fresh`  | ~359 MB | 1     |
-| `Grapes_Dataset/black/round_rotten` | ~535 MB | 0     |
+### 1. No contenía ni una sola imagen original
 
-## How to get the data
+Los 5.900 archivos eran 25 variantes aumentadas (5 transformaciones —
+`brightness_contrast`, `gamma`, `horizontal_flip`, `rgb_shift`, `rotate` — × 5
+iteraciones) de solo **236 fotos distintas**: 116 fresh y 120 rotten. El tamaño real
+del dataset era 236, no 5.900.
 
-1. Download the GrapeNet archive from its original source.
-2. Extract `Grapes_Dataset/black/round_fresh/black_round_fresh.zip` and
-   `Grapes_Dataset/black/round_rotten/black_round_rotten.zip`.
-3. Place the images so the layout is:
+Esto obligaba a **agrupar el split por foto original** (`base_id`, el prefijo
+`IMG_<fecha>_<hora>_TIMEBURST<n>_<id>`). Repartir archivos al azar habría puesto
+variantes de la misma foto en train y en test, inflando la precisión reportada.
+`src/prepare_data.base_image_id()` calcula ese identificador y hay tests que verifican
+que ninguna foto cruce de conjunto. **Esa lógica se conserva en el pipeline actual**,
+aunque el dataset de hoy no la necesite.
 
-```
-data/raw/fresh/    <- images from black_round_fresh.zip   (label = 1)
-data/raw/rotten/   <- images from black_round_rotten.zip  (label = 0)
-```
+### 2. Las imágenes eran una uva suelta sobre fondo blanco de estudio
 
-`python -m src.prepare_data` is meant to automate steps 2 and 3 (not
-implemented yet).
+Todas las fotos venían de una sola cámara (Xiaomi 2312DRAABI) con luz de día, y
+mostraban **una única uva centrada sobre papel blanco**. El fondo ocupaba la mayor
+parte del cuadro:
 
-## Metadata
+| | Brillo medio (0–255) |
+| --- | ---: |
+| GrapeNet `fresh` | 244,1 |
+| GrapeNet `rotten` | 229,4 |
+| Fotos reales de prueba | 121–157 |
 
-`metadata/Black_Round_Fresh.csv` and `metadata/Black_Round_Rotten.csv` come
-from the original dataset and are small enough to version. Columns:
+El modelo nunca vio una imagen por debajo de 220 de brillo, y la única diferencia
+entre clases que tenía a mano era cuántos píxeles oscuros había en el cuadro.
+Terminó aprendiendo "oscuro = podrido" en vez de reconocer la podredumbre. Alcanzaba
+0,872 en su propio test y fallaba con cualquier foto real.
 
-`Grape Category, Image File Name, Type of File, Resolution, Bit Depth,
-Camera Maker, Camera Model, DPI, Max Aperture, ISO Speed, Light Source,
-Flash Mode, Date Created`
+### Metadatos
 
-## Known caveats
+`metadata/Black_Round_Fresh.csv` y `metadata/Black_Round_Rotten.csv` vienen del
+dataset original y se conservan versionados por trazabilidad. Columnas:
 
-- **No hay ni una sola imagen original.** Los 5.900 archivos son 25 variantes
-  aumentadas (5 transformaciones — `brightness_contrast`, `gamma`,
-  `horizontal_flip`, `rgb_shift`, `rotate` — × 5 iteraciones) de solo **236 fotos
-  distintas**: 116 fresh y 120 rotten. El tamaño real del dataset es 236, no 5.900.
-- **El split debe agruparse por foto original** (`base_id`, el prefijo
-  `IMG_<date>_<time>_TIMEBURST<n>_<id>`). Repartir archivos al azar pondría
-  variantes de la misma foto en train y en test e inflaría la precisión reportada.
-  `src/prepare_data.base_image_id()` calcula ese identificador y hay tests que
-  verifican que ninguna foto cruce de conjunto.
-- **Se usan 4 variantes por foto** (944 imágenes, `config.VARIANTS_PER_PHOTO`), no
-  las 25: se conservan todas las fotos distintas y se recorta la redundancia
-  sintética, que la augmentation propia del entrenamiento ya genera.
-- **Single acquisition setup.** The metadata reports one camera maker/model
-  (Xiaomi 2312DRAABI) and daylight as the light source for every image, so the
-  model may not generalize to other cameras or lighting conditions. Relevant to
-  the bias question in the assignment.
+`Grape Category, Image File Name, Type of File, Resolution, Bit Depth, Camera Maker,
+Camera Model, DPI, Max Aperture, ISO Speed, Light Source, Flash Mode, Date Created`
+
+---
+
+## Otras carpetas
+
+- `data/processed/labels.csv` — generado por `src/dataset.py`: ruta, etiqueta, clase,
+  `base_id` y split de cada imagen. Regenerable, no se versiona.
+- `data/external_test/` — imágenes sueltas para probar generalización a mano. Las que
+  hay ahora quedaron del dataset anterior.
+- `data_to_test/` — fotos descargadas de internet usadas para la prueba de la sección
+  6 del informe.
